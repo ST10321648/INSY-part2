@@ -1,0 +1,7 @@
+# Node and general 
+node_modules/
+.env
+.DS_Store
+/build
+/dist
+npm-debug.log
