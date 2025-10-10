@@ -1,11 +1,6 @@
-﻿# node
-node_modules
+﻿node_modules
 npm-debug.log*
-
-# env & certs
 backend/.env
 backend/certs/*
-
-# sqlite databases
 backend/data.sqlite
 backend/test.sqlite
