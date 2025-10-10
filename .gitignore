@@ -1,7 +1,19 @@
-# Node and general 
+# node
 node_modules/
-.env
+npm-debug.log*
+
+# SSL certificates (DO NOT COMMIT)
+backend/localhost*.pem
+backend/localhost*-key.pem
+
+# environment files
+frontend/.env*
+backend/.env*
+
+# build outputs
+frontend/build/
+*.zip
+
+# OS files
 .DS_Store
-/build
-/dist
-npm-debug.log
+Thumbs.db
