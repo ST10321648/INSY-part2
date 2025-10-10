@@ -30,14 +30,10 @@ export default function Login() {
     try {
       await register(email, password);   // auto logs in (per our AuthProvider)
       nav("/payments");
-    }  catch (e) {
-        const msg =
-          e?.response?.data?.errors?.[0]?.msg ||
-          e?.response?.data?.error ||
-          e?.message;
-        setErr(msg || "Registration failed");
-      }
- finally {
+    } catch (e) {
+      const msg = e?.response?.data?.errors?.[0]?.msg || e?.response?.data?.error;
+      setErr(msg || "Registration failed");
+    } finally {
       setBusy(false);
     }
   };
