@@ -8,17 +8,21 @@ function Login() {
   const [message, setMessage] = useState('');
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post('http://localhost:5000/api/login', {
-        username,
-        password
-      });
-      setMessage(res.data.message); // Should show "Login successful!"
-    } catch (err) {
-      setMessage(err.response?.data?.message || 'Login failed');
-    }
-  };
+  e.preventDefault();
+  console.log("Logging in with:", username, password); // <- see what is sent
+  try {
+    const res = await axios.post('http://localhost:5000/api/login', {
+      username,
+      password
+    });
+    console.log("Response:", res.data);
+    setMessage(res.data.message);
+  } catch (err) {
+    console.error(err.response?.data);
+    setMessage(err.response?.data?.message || 'Login failed');
+  }
+};
+
 
   return (
     <div>
