@@ -1,8 +1,9 @@
 import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
-import { getDb } from "../src/db.js";
+import { connectDb, clearDatabase } from "../src/db.js";
 import { app } from "../src/app.js";
+
 
 
 const agent = request.agent(app);
@@ -11,9 +12,10 @@ let csrfToken;
 let accessToken;
 
 before(async () => {
-  const db = await getDb();
-  await db.exec("DELETE FROM refresh_tokens; DELETE FROM payments; DELETE FROM users;");
+  await connectDb();
+  await clearDatabase();
 });
+
 
 test("GET /api/csrf-token yields a CSRF token", async () => {
   const res = await agent.get("/api/csrf-token");

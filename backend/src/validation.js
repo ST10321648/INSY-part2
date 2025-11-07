@@ -22,6 +22,12 @@ export const loginRules = [
   body("password").isString().isLength({ min: 1 })
 ];
 
+export const employeeLoginRules = [
+  body("email").isEmail().withMessage("Invalid email"),
+  body("password")
+    .isLength({ min: 8 }).withMessage("Password must be at least 8 chars")
+];
+
 export const paymentRules = [
   body("amount").matches(amountRegex),
   body("currency").matches(currencyRegex),

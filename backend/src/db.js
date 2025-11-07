@@ -1,65 +1,88 @@
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
+// backend/src/db.js
+import mongoose from "mongoose";
 
-let dbPromise = null;
+const { Schema, model } = mongoose;
 
-export async function getDb() {
-  if (!dbPromise) {
-    const filename =
-      process.env.NODE_ENV === "test"
-        ? "./test.sqlite"      // <-- persistent file for tests
-        : "./data.sqlite";
+let connectionPromise = null;
 
-    dbPromise = open({
-      filename,
-      driver: sqlite3.Database
-    });
+export async function connectDb() {
+  if (!connectionPromise) {
+    const uri = process.env.NODE_ENV === "test"
+      ? process.env.MONGO_URI_TEST
+      : process.env.MONGO_URI;
 
-    const db = await dbPromise;
-    await db.exec(`PRAGMA foreign_keys = ON;`);
+    if (!uri) {
+      throw new Error("Missing MONGO_URI / MONGO_URI_TEST environment variables");
+    }
 
-    // Base tables
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        failed_logins INTEGER DEFAULT 0,
-        lockout_until INTEGER DEFAULT NULL,
-        created_at INTEGER NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS refresh_tokens (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        token TEXT NOT NULL,
-        expires_at INTEGER NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS payments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        amount_cents INTEGER NOT NULL,
-        currency TEXT NOT NULL,
-        recipient TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        account_number TEXT NOT NULL,
-        swift_code TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
-    `);
-
-    // Lightweight migration if old DB lacks columns
-    const pragma = await db.all(`PRAGMA table_info(payments);`);
-    const cols = new Set(pragma.map(c => c.name));
-    const missing = [];
-    if (!cols.has("provider")) missing.push(`ADD COLUMN provider TEXT NOT NULL DEFAULT 'SWIFT'`);
-    if (!cols.has("account_number")) missing.push(`ADD COLUMN account_number TEXT NOT NULL DEFAULT ''`);
-    if (!cols.has("swift_code")) missing.push(`ADD COLUMN swift_code TEXT NOT NULL DEFAULT ''`);
-    for (const stmt of missing) await db.exec(`ALTER TABLE payments ${stmt};`);
+    connectionPromise = mongoose.connect(uri);
   }
+  return connectionPromise;
+}
 
-  return dbPromise;
+// ----- Schemas & Models -----
+
+// Customers
+const userSchema = new Schema({
+  email: { type: String, required: true, unique: true },
+  password_hash: { type: String, required: true },
+  failed_logins: { type: Number, default: 0 },
+  lockout_until: { type: Date, default: null },
+  created_at: { type: Date, default: Date.now }
+});
+
+// Employees (NO self-registration)
+const employeeSchema = new Schema({
+  email: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  role: { type: String, enum: ["employee", "admin"], default: "employee" },
+  password_hash: { type: String, required: true }
+});
+
+// Refresh tokens – only used for CUSTOMERS in this design
+const refreshTokenSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  token: { type: String, required: true, index: true },
+  expires_at: { type: Date, required: true }
+});
+
+// Payments
+const paymentSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  amount_cents: { type: Number, required: true },
+  currency: { type: String, required: true },
+  recipient: { type: String, required: true },
+  provider: { type: String, required: true },
+  account_number: { type: String, required: true },
+  swift_code: { type: String, required: true },
+  created_at: { type: Date, default: Date.now },
+
+  // Audit fields for employee workflow
+  verified: { type: Boolean, default: false },
+  verified_by: { type: Schema.Types.ObjectId, ref: "Employee", default: null },
+  verified_at: { type: Date, default: null },
+  submitted_to_swift: { type: Boolean, default: false },
+  submitted_at: { type: Date, default: null }
+});
+
+export const User = model("User", userSchema);
+export const Employee = model("Employee", employeeSchema);
+export const RefreshToken = model("RefreshToken", refreshTokenSchema);
+export const Payment = model("Payment", paymentSchema);
+
+// Helper for tests / reset
+export async function clearDatabase() {
+  await Promise.all([
+    User.deleteMany({}),
+    Employee.deleteMany({}),
+    RefreshToken.deleteMany({}),
+    Payment.deleteMany({})
+  ]);
+}
+
+// Auto-connect outside tests
+if (process.env.NODE_ENV !== "test") {
+  connectDb().catch((err) => {
+    console.error("MongoDB connection error:", err);
+  });
 }
