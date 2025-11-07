@@ -7,11 +7,9 @@ import csurf from "csurf";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import { validationResult } from "express-validator";
-import { employeeLoginRules } from "./validation.js"; // we’ll add this in a second
-// ...
-
+import { employeeLoginRules } from "./validation.js";
 import { applySecurity, authRateLimiter, paymentsRateLimiter, signAccessToken, signRefreshToken, verifyAccess } from "./security.js";
-import { registerRules, loginRules, paymentRules } from "./validation.js";
+import { registerRules, loginRules, paymentRules, employeeLoginRules } from "./validation.js";
 import { User, RefreshToken, Payment, Employee } from "./db.js";
 
 
@@ -260,7 +258,7 @@ app.post("/api/payments", verifyAccess, paymentsRateLimiter, csrfProtection, pay
   res.status(201).json({ message: "Payment recorded" });
 });
 
-app.get("/api/employee/payments", verifyAccess, requireEmployee, async (req, res) => {
+app.get("/api/employee/payments", verifyAccess, requireEmployee, paymentsRateLimiter, async (req, res) => {
   const payments = await Payment.find({})
     .populate("user", "email")
     .populate("verified_by", "email name")
@@ -287,7 +285,7 @@ app.get("/api/employee/payments", verifyAccess, requireEmployee, async (req, res
   );
 });
 
-app.get("/api/employee/payments/pending", verifyAccess, requireEmployee, async (req, res) => {
+app.get("/api/employee/payments/pending", verifyAccess, requireEmployee, paymentsRateLimiter, async (req, res) => {
   const payments = await Payment.find({ verified: false })
     .populate("user", "email")
     .sort({ created_at: 1 })
@@ -308,7 +306,7 @@ app.get("/api/employee/payments/pending", verifyAccess, requireEmployee, async (
   );
 });
 
-app.post("/api/employee/payments/:id/verify", verifyAccess, requireEmployee, csrfProtection, async (req, res) => {
+app.post("/api/employee/payments/:id/verify", verifyAccess, requireEmployee,paymentsRateLimiter, csrfProtection, async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -331,7 +329,7 @@ app.post("/api/employee/payments/:id/verify", verifyAccess, requireEmployee, csr
   res.json({ message: "Payment verified" });
 });
 
-app.post("/api/employee/payments/:id/submit", verifyAccess, requireEmployee, csrfProtection, async (req, res) => {
+app.post("/api/employee/payments/:id/submit", verifyAccess, requireEmployee, paymentsRateLimiter, csrfProtection, async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {

@@ -23,8 +23,9 @@ export const loginRules = [
 ];
 
 export const employeeLoginRules = [
-  body("email").isEmail().withMessage("Invalid email"),
+  body("email").matches(emailRegex).withMessage("Invalid email"),
   body("password")
+    .isString()
     .isLength({ min: 8 }).withMessage("Password must be at least 8 chars")
 ];
 
