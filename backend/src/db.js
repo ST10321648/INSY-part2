@@ -79,7 +79,10 @@ export async function clearDatabase() {
     Payment.deleteMany({})
   ]);
 }
-
+// NEW: disconnect helper for tests
+export async function disconnectDb() {
+  await mongoose.connection.close();
+}
 // Auto-connect outside tests
 if (process.env.NODE_ENV !== "test") {
   connectDb().catch((err) => {

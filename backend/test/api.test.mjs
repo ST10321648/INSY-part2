@@ -1,10 +1,15 @@
 // backend/test/api.test.mjs
-import { test, before } from "node:test";
+import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
 import bcrypt from "bcrypt";
-
-import { connectDb, clearDatabase, Employee, Payment } from "../src/db.js";
+import {
+  connectDb,
+  clearDatabase,
+  Employee,
+  Payment,
+  disconnectDb
+} from "../src/db.js";
 import { app } from "../src/app.js";
 
 const agent = request.agent(app);
@@ -146,3 +151,8 @@ test("Employee can submit a verified payment to SWIFT", async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.message, "Payment submitted to SWIFT (simulated)");
 });
+
+after(async () => {
+  await disconnectDb();
+});
+
